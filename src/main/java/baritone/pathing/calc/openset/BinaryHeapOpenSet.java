@@ -29,9 +29,11 @@ import java.util.Arrays;
 public final class BinaryHeapOpenSet implements IOpenSet {
 
     /**
-     * The initial capacity of the heap (2^10)
+     * The initial capacity of the heap (2^12). The open-set frontier of a
+     * non-trivial A* search comfortably exceeds 2^10, so starting larger avoids
+     * several full-array {@link Arrays#copyOf} doublings during a single search.
      */
-    private static final int INITIAL_CAPACITY = 1024;
+    private static final int INITIAL_CAPACITY = 4096;
 
     /**
      * The array backing the heap
