@@ -24,32 +24,54 @@ import baritone.api.utils.IPlayerContext;
 import baritone.pathing.movement.CalculationContext;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 
+import java.util.Collections;
+import java.util.List;
+
 public final class Favoring {
 
+    /**
+     * Backtrack favoring keyed by position hash. Positions on the previous path
+     * are sparse, so a hash map is the natural representation.
+     */
     private final Long2DoubleOpenHashMap favorings;
 
+    /**
+     * Mob and spawner avoidance spheres. Evaluated on demand rather than
+     * pre-rasterized into {@link #favorings}: building the spheres up front is
+     * O(radius^3) per source and ran on the main thread, causing a noticeable
+     * hitch when many mobs were nearby. Evaluating them lazily moves that work
+     * onto the pathfinding thread and only pays for nodes actually explored.
+     */
+    private final Avoidance[] avoidances;
+
     public Favoring(IPlayerContext ctx, IPath previous, CalculationContext context) {
-        this(previous, context);
-        for (Avoidance avoid : Avoidance.create(ctx)) {
-            avoid.applySpherical(favorings);
-        }
-        Helper.HELPER.logDebug("Favoring size: " + favorings.size());
+        this(previous, context, Avoidance.create(ctx));
     }
 
     public Favoring(IPath previous, CalculationContext context) { // create one just from previous path, no mob avoidances
+        this(previous, context, Collections.emptyList());
+    }
+
+    private Favoring(IPath previous, CalculationContext context, List<Avoidance> avoidances) {
         favorings = new Long2DoubleOpenHashMap();
         favorings.defaultReturnValue(1.0D);
         double coeff = context.backtrackCostFavoringCoefficient;
         if (coeff != 1D && previous != null) {
             previous.positions().forEach(pos -> favorings.put(BetterBlockPos.longHash(pos), coeff));
         }
+        this.avoidances = avoidances.toArray(new Avoidance[0]);
+        Helper.HELPER.logDebug("Favoring size: " + favorings.size() + ", avoidances: " + this.avoidances.length);
     }
 
     public boolean isEmpty() {
-        return favorings.isEmpty();
+        return favorings.isEmpty() && avoidances.length == 0;
     }
 
-    public double calculate(long hash) {
-        return favorings.get(hash);
+    public double calculate(long hash, int x, int y, int z) {
+        double result = favorings.get(hash);
+        for (Avoidance avoidance : avoidances) {
+            result *= avoidance.coefficient(x, y, z);
+        }
+        return result;
     }
 }

@@ -18,9 +18,7 @@
 package baritone.utils.pathing;
 
 import baritone.Baritone;
-import baritone.api.utils.BetterBlockPos;
 import baritone.api.utils.IPlayerContext;
-import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import net.minecraft.core.BlockPos;
 
 import java.util.ArrayList;
@@ -76,18 +74,5 @@ public class Avoidance {
             });
         }
         return res;
-    }
-
-    public void applySpherical(Long2DoubleOpenHashMap map) {
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
-                for (int z = -radius; z <= radius; z++) {
-                    if (x * x + y * y + z * z <= radius * radius) {
-                        long hash = BetterBlockPos.longHash(centerX + x, centerY + y, centerZ + z);
-                        map.put(hash, map.get(hash) * coefficient);
-                    }
-                }
-            }
-        }
     }
 }

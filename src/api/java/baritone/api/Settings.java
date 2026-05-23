@@ -452,10 +452,11 @@ public final class Settings {
     /**
      * Toggle the following 4 settings
      * <p>
-     * They have a noticeable performance impact, so they default off
+     * They have a small performance impact, so they default off
      * <p>
-     * Specifically, building up the avoidance map on the main thread before pathing starts actually takes a noticeable
-     * amount of time, especially when there are a lot of mobs around, and your game jitters for like 200ms while doing so
+     * Avoidance spheres are now evaluated lazily on the pathfinding thread rather than rasterized into a map on the main
+     * thread before pathing starts, so the old multi-hundred-millisecond main-thread hitch (when many mobs were nearby)
+     * no longer occurs; the only remaining cost is a per-node distance check against each nearby mob during the search.
      */
     public final Setting<Boolean> avoidance = new Setting<>(false);
 
