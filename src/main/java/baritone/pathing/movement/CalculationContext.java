@@ -39,8 +39,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
+import baritone.api.utils.Helper;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static baritone.api.pathing.movement.ActionCosts.COST_INF;
 
@@ -51,6 +54,12 @@ import static baritone.api.pathing.movement.ActionCosts.COST_INF;
 public class CalculationContext {
 
     private static final ItemStack STACK_BUCKET_WATER = new ItemStack(Items.WATER_BUCKET);
+
+    /**
+     * Fires at most once per JVM lifetime so the "protection stub" notice appears in the log
+     * without spamming one line per A* node explored.
+     */
+    private static final AtomicBoolean PROTECTION_WARNING_SENT = new AtomicBoolean(false);
 
     public final boolean safeForThreadedUse;
     public final IBaritone baritone;
@@ -214,8 +223,37 @@ public class CalculationContext {
         return placeBlockCost; // shrug
     }
 
+    /**
+     * Returns {@code true} if the block at {@code (x, y, z)} is believed to be in a
+     * region where Baritone must not place or break blocks (e.g. a WorldGuard region,
+     * a land-claim plugin boundary, or a server-side protection zone).
+     *
+     * <p><b>Current status: stub — always returns {@code false}.</b>
+     * Full protection detection requires hooking into server-side plugins (WorldGuard,
+     * GriefPrevention, etc.) or detecting permission-denied feedback packets from the
+     * server.  That integration is tracked as issue #220.
+     *
+     * <p>As a result, Baritone may currently attempt to place or break blocks in
+     * protected areas and silently fail (the server rejects the action but Baritone
+     * does not detect the rejection and may get stuck or waste items).
+     *
+     * @param x block X coordinate
+     * @param y block Y coordinate
+     * @param z block Z coordinate
+     * @return {@code true} if the position is definitely protected, {@code false} if
+     *         it is definitely safe or if protection status is unknown (current behaviour)
+     */
     public boolean isPossiblyProtected(int x, int y, int z) {
-        // TODO more protection logic here; see #220
+        // TODO: implement protection detection — see issue #220.
+        // We log a one-time notice so operators are aware this check is a stub.
+        if (PROTECTION_WARNING_SENT.compareAndSet(false, true)) {
+            // Surface once in the debug log so server operators know this is a stub.
+            // logDirect would spam in-game chat; logDebug is visible in logs without bothering users.
+            Helper.HELPER.logDebug(
+                    "[Baritone] isPossiblyProtected is a stub (issue #220): block-protection checks " +
+                    "are not implemented. Baritone may attempt to break/place in protected regions."
+            );
+        }
         return false;
     }
 }

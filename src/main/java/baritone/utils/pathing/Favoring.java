@@ -27,6 +27,25 @@ import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Combines all cost-multiplier signals that steer the pathfinder toward or away from
+ * particular positions without altering the underlying movement costs.
+ *
+ * <p>Two independent signals are blended here:
+ * <ol>
+ *   <li><b>Backtrack favoring</b> — positions that were on the previous path receive a
+ *       coefficient less than {@code 1.0} (cheaper to re-use them) to encourage the planner
+ *       to prefer a route it already knows. Stored as a sparse hash map keyed by position
+ *       hash, since only a few hundred positions on the old path are tracked.</li>
+ *   <li><b>Mob/spawner avoidance</b> — spheres of influence around hostile entities and
+ *       spawners raise the cost of nodes near those sources. Evaluated lazily per-node
+ *       during A* (rather than pre-rasterized) so that the work moves onto the pathing
+ *       thread and is proportional to nodes actually explored, not sphere volume.</li>
+ * </ol>
+ *
+ * @see Avoidance
+ * @see MobDangerProfile
+ */
 public final class Favoring {
 
     /**
@@ -44,11 +63,27 @@ public final class Favoring {
      */
     private final Avoidance[] avoidances;
 
+    /**
+     * Full constructor: applies both backtrack favoring from a previous path and mob/spawner
+     * avoidance spheres derived from the current world state.
+     *
+     * @param ctx      the player context used to enumerate nearby entities and spawners
+     * @param previous the path segment just executed, whose positions will be made cheaper
+     *                 to re-traverse; may be {@code null} to skip backtrack favoring
+     * @param context  the calculation context, supplies the backtrack coefficient
+     */
     public Favoring(IPlayerContext ctx, IPath previous, CalculationContext context) {
         this(previous, context, Avoidance.create(ctx));
     }
 
-    public Favoring(IPath previous, CalculationContext context) { // create one just from previous path, no mob avoidances
+    /**
+     * Backtrack-only constructor: applies previous-path favoring but no mob avoidance.
+     * Useful when the caller knows avoidance is disabled or irrelevant.
+     *
+     * @param previous the path segment just executed; may be {@code null}
+     * @param context  the calculation context, supplies the backtrack coefficient
+     */
+    public Favoring(IPath previous, CalculationContext context) {
         this(previous, context, Collections.emptyList());
     }
 
@@ -63,10 +98,36 @@ public final class Favoring {
         Helper.HELPER.logDebug("Favoring size: " + favorings.size() + ", avoidances: " + this.avoidances.length);
     }
 
+    /**
+     * Returns {@code true} when this instance has no adjustments to apply.
+     * When empty, the A* cost multiplier is always {@code 1.0} and this object
+     * can be skipped entirely by the caller.
+     */
     public boolean isEmpty() {
         return favorings.isEmpty() && avoidances.length == 0;
     }
 
+    /**
+     * Returns the combined cost multiplier for the position at {@code (x, y, z)}.
+     *
+     * <p>The result is the product of:
+     * <ul>
+     *   <li>the backtrack coefficient stored for this position's {@code hash} (defaults
+     *       to {@code 1.0} if the position is not on the previous path), and</li>
+     *   <li>every avoidance sphere whose centre is within {@code radius} blocks of the
+     *       position (each independently multiplicative).</li>
+     * </ul>
+     *
+     * <p>A return value less than {@code 1.0} means the node is preferred (backtrack
+     * favoring); greater than {@code 1.0} means it is penalised (avoidance).
+     *
+     * @param hash the result of {@link baritone.api.utils.BetterBlockPos#longHash(int, int, int)}
+     *             for {@code (x, y, z)} — pre-computed by the caller to avoid redundant work
+     * @param x    block X coordinate
+     * @param y    block Y coordinate
+     * @param z    block Z coordinate
+     * @return the combined cost multiplier; always positive
+     */
     public double calculate(long hash, int x, int y, int z) {
         double result = favorings.get(hash);
         for (Avoidance avoidance : avoidances) {

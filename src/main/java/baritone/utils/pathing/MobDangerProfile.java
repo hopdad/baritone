@@ -40,7 +40,19 @@ import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
  */
 public final class MobDangerProfile {
 
+    /**
+     * The avoidance cost multiplier for any A* node that falls within {@link #radius} of this mob.
+     * A value of {@code 1.0} means no penalty; higher values steer the path further away.
+     * This is derived from the user's {@code mobAvoidanceCoefficient} setting scaled by the
+     * per-entity-type danger multiplier.
+     */
     public final double coefficient;
+
+    /**
+     * The sphere radius (in blocks) around the mob within which {@link #coefficient} is applied.
+     * Derived from the user's {@code mobAvoidanceRadius} setting, optionally enlarged for
+     * ranged or otherwise wide-threat mobs (e.g. Ghast, Warden).
+     */
     public final int radius;
 
     private MobDangerProfile(double coefficient, int radius) {
