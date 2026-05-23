@@ -22,10 +22,6 @@ import baritone.api.utils.BetterBlockPos;
 import baritone.api.utils.IPlayerContext;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.EnderMan;
-import net.minecraft.world.entity.monster.spider.Spider;
-import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,12 +68,12 @@ public class Avoidance {
                     .forEach(mobspawner -> res.add(new Avoidance(mobspawner, mobSpawnerCoeff, Baritone.settings().mobSpawnerAvoidanceRadius.value)));
         }
         if (mobCoeff != 1.0D) {
-            ctx.entitiesStream()
-                    .filter(entity -> entity instanceof Mob)
-                    .filter(entity -> (!(entity instanceof Spider)) || ctx.player().getLightLevelDependentMagicValue() < 0.5)
-                    .filter(entity -> !(entity instanceof ZombifiedPiglin) || ((ZombifiedPiglin) entity).getLastHurtByMob() != null)
-                    .filter(entity -> !(entity instanceof EnderMan) || ((EnderMan) entity).isCreepy())
-                    .forEach(entity -> res.add(new Avoidance(entity.blockPosition(), mobCoeff, Baritone.settings().mobAvoidanceRadius.value)));
+            ctx.entitiesStream().forEach(entity -> {
+                MobDangerProfile profile = MobDangerProfile.of(entity, ctx);
+                if (profile != null) {
+                    res.add(new Avoidance(entity.blockPosition(), profile.coefficient, profile.radius));
+                }
+            });
         }
         return res;
     }
