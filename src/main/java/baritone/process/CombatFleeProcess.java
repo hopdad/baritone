@@ -23,6 +23,7 @@ import baritone.api.process.PathingCommand;
 import baritone.api.process.PathingCommandType;
 import baritone.utils.BaritoneProcessHelper;
 import baritone.utils.pathing.MobDangerProfile;
+import baritone.utils.pathing.PostFleeThreatZone;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
@@ -77,6 +78,14 @@ public final class CombatFleeProcess extends BaritoneProcessHelper {
      * When this reaches {@link baritone.api.Settings#fleeStableHealthTicks} the flee ends.
      */
     private int stableHealthTicks = 0;
+
+    /**
+     * The most-recently seen block position of the nearest threat while we were fleeing.
+     * Recorded every tick so that when flee ends we know <em>where</em> the mob was, even if
+     * it despawned or moved out of range by the time the flee-stability window completes.
+     * {@code null} until the first tick in flee mode where a threat is visible.
+     */
+    private BlockPos lastThreatPos = null;
 
     public CombatFleeProcess(Baritone baritone) {
         super(baritone);
@@ -137,6 +146,9 @@ public final class CombatFleeProcess extends BaritoneProcessHelper {
     public PathingCommand onTick(boolean calcFailed, boolean isSafeToCancel) {
         Optional<BlockPos> threatPos = nearestThreatPos();
 
+        // Keep lastThreatPos up-to-date so we remember where the mob was if it disappears.
+        threatPos.ifPresent(pos -> lastThreatPos = pos);
+
         if (!threatPos.isPresent()) {
             // No threat visible — advance stability counter as if safe.
             stableHealthTicks++;
@@ -155,8 +167,19 @@ public final class CombatFleeProcess extends BaritoneProcessHelper {
         // Check if we've been safe long enough to stop fleeing.
         if (stableHealthTicks >= Baritone.settings().fleeStableHealthTicks.value) {
             logDirect("CombatFlee: safe for " + stableHealthTicks + " ticks, resuming normal behaviour");
+
+            // Register the post-flee avoidance zone so the next path calculation routes
+            // around where the mob was rather than walking straight back into it.
+            if (Baritone.settings().postFleeAvoidance.value && lastThreatPos != null) {
+                long currentTick = ctx.world().getGameTime();
+                PostFleeThreatZone.register(baritone, lastThreatPos, currentTick);
+                logDirect("CombatFlee: registered threat zone at " + lastThreatPos
+                        + " for " + Baritone.settings().postFleeAvoidDurationTicks.value + " ticks");
+            }
+
             fleeing = false;
             stableHealthTicks = 0;
+            lastThreatPos = null;
             return new PathingCommand(null, PathingCommandType.DEFER);
         }
 
@@ -233,5 +256,8 @@ public final class CombatFleeProcess extends BaritoneProcessHelper {
         prevHealth = -1.0f;
         fleeing = false;
         stableHealthTicks = 0;
+        lastThreatPos = null;
+        // Also clear any lingering zone — a forced stop shouldn't leave stale avoidance.
+        PostFleeThreatZone.clear(baritone);
     }
 }

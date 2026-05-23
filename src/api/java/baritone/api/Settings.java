@@ -564,6 +564,37 @@ public final class Settings {
     public final Setting<Double> fleeDangerFraction = new Setting<>(0.75);
 
     /**
+     * When {@code true}, after {@link #fleeWhenAttacked} ends naturally (health stable, no threat
+     * nearby), Baritone registers a temporary high-cost zone around the last recorded threat
+     * position.  The next path calculation from whatever process resumes will route around this
+     * zone, so the bot approaches the same work area from a different direction instead of walking
+     * straight back through the mob.
+     */
+    public final Setting<Boolean> postFleeAvoidance = new Setting<>(true);
+
+    /**
+     * Radius in blocks of the post-flee avoidance zone registered by {@link #postFleeAvoidance}.
+     * The entire sphere is treated as expensive by the pathfinder while the zone is active.
+     */
+    public final Setting<Integer> postFleeAvoidRadius = new Setting<>(16);
+
+    /**
+     * Cost multiplier applied to moves through the post-flee avoidance zone
+     * (see {@link #postFleeAvoidance}).  Values greater than {@code 1.0} make those nodes more
+     * expensive; {@code 5.0} means the pathfinder pays 5× the normal cost to enter the zone,
+     * strongly preferring a detour.  Set to {@code 1.0} to effectively disable the penalty while
+     * keeping the feature toggle on.
+     */
+    public final Setting<Double> postFleeAvoidanceCoefficient = new Setting<>(5.0);
+
+    /**
+     * How long, in game ticks, the post-flee avoidance zone persists after flee ends.
+     * At 20 ticks/second, the default of {@code 400} keeps the zone active for 20 seconds —
+     * enough for a slow mob to wander away before the bot reconsiders that route.
+     */
+    public final Setting<Integer> postFleeAvoidDurationTicks = new Setting<>(400);
+
+    /**
      * At game-night, Baritone multiplies the "avoidance extra" (the part of
      * {@link #mobAvoidanceCoefficient} above {@code 1.0}) for each mob by this value, producing
      * wider / more expensive avoidance spheres. Set to {@code 1.0} to disable the night-time

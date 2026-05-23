@@ -18,6 +18,7 @@
 package baritone;
 
 import baritone.api.BaritoneAPI;
+import baritone.api.BaritoneStatus;
 import baritone.api.IBaritone;
 import baritone.api.Settings;
 import baritone.api.behavior.IBehavior;
@@ -251,6 +252,11 @@ public class Baritone implements IBaritone {
                 mc.execute(() -> mc.setScreen(new GuiClick()));
             } catch (Exception ignored) {}
         }).start();
+    }
+
+    @Override
+    public BaritoneStatus getStatus() {
+        return BaritoneStatus.snapshot(this);
     }
 
     public Path getDirectory() {

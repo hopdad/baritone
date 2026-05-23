@@ -24,6 +24,7 @@ import net.minecraft.core.BlockPos;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public class Avoidance {
 
@@ -55,10 +56,15 @@ public class Avoidance {
     }
 
     public static List<Avoidance> create(IPlayerContext ctx) {
-        if (!Baritone.settings().avoidance.value) {
-            return Collections.emptyList();
-        }
+        // Start with an empty (mutable) list so we can always append the post-flee zone below.
         List<Avoidance> res = new ArrayList<>();
+
+        if (!Baritone.settings().avoidance.value) {
+            // Normal avoidance is off, but we still apply the post-flee zone if enabled —
+            // it's a separate, opt-in feature, not part of the mob-avoidance toggle.
+            appendPostFleeZone(res, ctx);
+            return res.isEmpty() ? Collections.emptyList() : res;
+        }
         double mobSpawnerCoeff = Baritone.settings().mobSpawnerAvoidanceCoefficient.value;
         double mobCoeff = Baritone.settings().mobAvoidanceCoefficient.value;
         if (mobSpawnerCoeff != 1.0D) {
@@ -83,6 +89,22 @@ public class Avoidance {
                 }
             });
         }
+
+        // Always check for a lingering post-flee threat zone, independent of mob avoidance toggle.
+        appendPostFleeZone(res, ctx);
         return res;
+    }
+
+    /**
+     * Appends a {@link PostFleeThreatZone} avoidance sphere to {@code list} if one is active for
+     * this Baritone instance.  No-op when {@link baritone.api.Settings#postFleeAvoidance} is off.
+     */
+    private static void appendPostFleeZone(List<Avoidance> list, IPlayerContext ctx) {
+        if (!Baritone.settings().postFleeAvoidance.value) {
+            return;
+        }
+        long currentTick = ctx.world().getGameTime();
+        Optional<Avoidance> zone = PostFleeThreatZone.get(ctx.baritone(), currentTick);
+        zone.ifPresent(list::add);
     }
 }

@@ -61,13 +61,17 @@ public enum SettingCategory {
             "spawnableBlockAvoidance", "spawnableBlockAvoidanceCoefficient",
             "dangerousBiomeAvoidance", "dangerousBiomeCoefficient", "dangerousBiomes",
             "fleeWhenAttacked", "fleeDistance", "fleeStableHealthTicks",
-            "fleePreserveY", "fleeDangerFraction"
+            "fleePreserveY", "fleeDangerFraction",
+            "postFleeAvoidance", "postFleeAvoidRadius",
+            "postFleeAvoidanceCoefficient", "postFleeAvoidDurationTicks"
     ),
 
     SURVIVAL("Survival",
             "autoPlaceTorches", "torchPlacementLightThreshold",
             "fleeWhenAttacked", "fleeDistance", "fleeStableHealthTicks",
             "fleePreserveY", "fleeDangerFraction",
+            "postFleeAvoidance", "postFleeAvoidRadius",
+            "postFleeAvoidanceCoefficient", "postFleeAvoidDurationTicks",
             "showStatusHud"
     ),
 

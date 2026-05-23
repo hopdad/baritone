@@ -143,4 +143,18 @@ public interface IBaritone {
      * Open click
      */
     void openClick();
+
+    /**
+     * Returns a point-in-time snapshot of Baritone's current state.
+     *
+     * <p>The snapshot captures the active process, pathing state, goal, builder progress,
+     * player position and health, and a world-tick timestamp.  It can be formatted as a
+     * human-readable string ({@link BaritoneStatus#toDisplayString()}) or as a minimal JSON
+     * object ({@link BaritoneStatus#toJson()}) for consumption by external mods or scripts.
+     *
+     * <p>Must be called on the game (client) thread.
+     *
+     * @return a fresh, immutable {@link BaritoneStatus} snapshot
+     */
+    BaritoneStatus getStatus();
 }
