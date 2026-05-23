@@ -91,6 +91,8 @@ public enum SettingCategory {
             "renderSchematicIgnoreDepth",
             "colorSchematicGhostBlocksToPlace", "colorSchematicGhostBlocksToBreak",
             "colorSchematicGhostBlocksWrong", "colorSchematicBoundingBox",
+            // Layer plane
+            "renderSchematicLayer", "colorSchematicLayerPlane",
             // Layer control
             "buildInLayers", "layerOrder", "layerHeight", "startAtLayer",
             // Block matching

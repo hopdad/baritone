@@ -39,6 +39,7 @@ import baritone.utils.pathing.Favoring;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -139,6 +140,43 @@ public final class PathingBehavior extends Behavior implements IPathingBehavior,
     }
 
     private String buildHudStatus() {
+        // ---- Builder-specific HUD (overrides the generic display when builder is active) ----
+        baritone.api.process.IBuilderProcess builder = baritone.getBuilderProcess();
+        if (builder.isActive() || builder.isPaused()) {
+            String schematicName = builder.getActiveSchematicName();
+            if (schematicName == null) schematicName = "schematic";
+            // Truncate long names
+            if (schematicName.length() > 24) schematicName = schematicName.substring(0, 22) + "…";
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(builder.isPaused() ? "§ePaused§r" : "§aBuilding§r");
+            sb.append(" ").append(schematicName);
+
+            int remaining = builder.getBlocksRemaining();
+            int placed    = builder.getBlocksPlaced();
+            if (remaining >= 0 && placed >= 0) {
+                int total = remaining + placed;
+                int pct   = total > 0 ? (int) (100L * placed / total) : 0;
+                sb.append(" | ").append(placed).append("/").append(total)
+                  .append(" (").append(pct).append("%)");
+            } else if (remaining >= 0) {
+                sb.append(" | ").append(remaining).append(" left");
+            }
+
+            // Layer progress when buildInLayers is enabled
+            Optional<Integer> minLayer = builder.getMinLayer();
+            Optional<Integer> maxLayer = builder.getMaxLayer();
+            if (minLayer.isPresent() && maxLayer.isPresent()) {
+                int layerH   = Baritone.settings().layerHeight.value;
+                int curLayer = minLayer.get() + 1;                    // 1-based for display
+                int totalLayers = Math.max(1, maxLayer.get() / Math.max(1, layerH));
+                sb.append(" | Layer ").append(curLayer).append("/").append(totalLayers);
+            }
+
+            return sb.toString();
+        }
+
+        // ---- Generic HUD for all other processes ----
         // Process name
         String processName = baritone.getPathingControlManager()
                 .mostRecentInControl()

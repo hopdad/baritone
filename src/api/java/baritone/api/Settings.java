@@ -951,6 +951,19 @@ public final class Settings {
      */
     public final Setting<Color> colorSchematicBoundingBox = new Setting<>(new Color(255, 230, 0));
 
+    /**
+     * When {@link baritone.api.Settings#buildInLayers} is active, draw horizontal wireframe
+     * planes at the top and bottom of the current working layer so you can see which slice the
+     * bot is building.
+     */
+    public final Setting<Boolean> renderSchematicLayer = new Setting<>(true);
+
+    /**
+     * Wireframe colour of the current-layer indicator planes drawn when
+     * {@link #renderSchematicLayer} is enabled.
+     */
+    public final Setting<Color> colorSchematicLayerPlane = new Setting<>(new Color(130, 80, 255));
+
     // ---- end schematic ghost overlay ----
 
     /**

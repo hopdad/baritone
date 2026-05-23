@@ -21,9 +21,11 @@ import baritone.api.schematic.ISchematic;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
@@ -115,4 +117,29 @@ public interface IBuilderProcess extends IBaritoneProcess {
      * @return The upper bound of the current mining layer
      */
     Optional<Integer> getMaxLayer();
+
+    /**
+     * Returns the number of schematic positions that are still incorrect (blocks that need to be
+     * placed or removed). Returns {@code -1} if the builder has not yet performed its initial
+     * full-schematic scan (the value is available once building has started).
+     */
+    int getBlocksRemaining();
+
+    /**
+     * Returns the number of schematic positions that have been confirmed as complete
+     * ({@code observedCompleted} set). Returns {@code -1} if no schematic is loaded.
+     * Together with {@link #getBlocksRemaining()}, this can be used to compute build progress:
+     * {@code pct = placed / (placed + remaining)}.
+     */
+    int getBlocksPlaced();
+
+    /**
+     * Computes a map of block types → count for the blocks that still need to be placed in the
+     * active schematic (positions where the schematic expects a solid block but the world has
+     * something different).  Does NOT include positions that need breaking.
+     *
+     * <p>Returns an empty map if no schematic is loaded or the initial scan hasn't run yet.
+     * The map is sorted by count descending.</p>
+     */
+    Map<Block, Integer> getMaterialList();
 }

@@ -19,8 +19,8 @@ package baritone.behavior;
 
 import baritone.Baritone;
 import baritone.api.event.events.RenderEvent;
+import baritone.api.process.IBuilderProcess;
 import baritone.api.schematic.ISchematic;
-import baritone.process.BuilderProcess;
 import baritone.utils.BlockStateInterface;
 import baritone.utils.IRenderer;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -33,6 +33,7 @@ import net.minecraft.world.phys.AABB;
 
 import java.awt.*;
 import java.util.Collections;
+import java.util.Optional;
 
 /**
  * Renders a Litematica-style "build ghost" overlay for the active {@link BuilderProcess} schematic.
@@ -69,14 +70,11 @@ public final class BuilderRenderer extends Behavior {
 
     @Override
     public void onRenderPass(RenderEvent event) {
-        if (!Baritone.settings().renderSchematic.value) {
-            return;
-        }
         if (ctx.player() == null || ctx.world() == null) {
             return;
         }
 
-        BuilderProcess builder = baritone.getBuilderProcess();
+        IBuilderProcess builder = baritone.getBuilderProcess();
         ISchematic schematic = builder.getActiveSchematic();
         Vec3i origin = builder.getActiveSchematicOrigin();
         if (schematic == null || origin == null) {
@@ -85,11 +83,99 @@ public final class BuilderRenderer extends Behavior {
 
         PoseStack stack = event.getModelViewStack();
 
-        if (Baritone.settings().renderSchematicBoundingBox.value) {
-            drawBoundingBox(stack, schematic, origin);
+        // Bounding box and ghost overlay — gated by renderSchematic toggle
+        if (Baritone.settings().renderSchematic.value) {
+            if (Baritone.settings().renderSchematicBoundingBox.value) {
+                drawBoundingBox(stack, schematic, origin);
+            }
+            drawBlockOverlay(stack, schematic, origin);
         }
 
-        drawBlockOverlay(stack, schematic, origin);
+        // Layer plane — separate toggle so it can be on even without the full ghost
+        if (Baritone.settings().renderSchematicLayer.value) {
+            drawLayerPlane(stack, schematic, origin, builder);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Layer plane
+    // -------------------------------------------------------------------------
+
+    /**
+     * When {@link baritone.api.Settings#buildInLayers} is active, draws two horizontal wireframe
+     * rectangles that bracket the current working layer, giving a clear visual indicator of which
+     * Y-slice the bot is building.
+     *
+     * <p>The planes span the full X-Z footprint of the schematic at the bottom and top of the
+     * active layer.  Layer-order (bottom-to-top vs top-to-bottom) is accounted for so the
+     * highlighted slab always matches where {@link baritone.process.BuilderProcess} is working.</p>
+     */
+    private void drawLayerPlane(PoseStack stack, ISchematic schematic, Vec3i origin, IBuilderProcess builder) {
+        Optional<Integer> minLayerOpt = builder.getMinLayer();
+        Optional<Integer> maxLayerOpt = builder.getMaxLayer();
+        if (!minLayerOpt.isPresent() || !maxLayerOpt.isPresent()) {
+            return; // buildInLayers not active
+        }
+
+        int layerIndex = minLayerOpt.get();   // 0-based current layer index
+        int stopHeight = maxLayerOpt.get();   // total build height in blocks
+        int layerH     = Baritone.settings().layerHeight.value;
+        boolean topToBottom = Baritone.settings().layerOrder.value;
+
+        // Compute world-Y range of the current slab
+        int slabMinY, slabMaxY;
+        if (topToBottom) {
+            // Counting down: layer 0 = topmost slab
+            slabMaxY = origin.getY() + stopHeight - layerIndex * layerH;
+            slabMinY = slabMaxY - layerH;
+        } else {
+            // Counting up: layer 0 = bottom slab
+            slabMinY = origin.getY() + layerIndex * layerH;
+            slabMaxY = slabMinY + layerH;
+        }
+
+        // Clamp to schematic Y range
+        slabMinY = Math.max(slabMinY, origin.getY());
+        slabMaxY = Math.min(slabMaxY, origin.getY() + schematic.heightY());
+
+        double x0 = origin.getX();
+        double x1 = origin.getX() + schematic.widthX();
+        double z0 = origin.getZ();
+        double z1 = origin.getZ() + schematic.lengthZ();
+
+        Color color = Baritone.settings().colorSchematicLayerPlane.value;
+        float lw = Baritone.settings().goalRenderLineWidthPixels.value;
+
+        // Draw bottom plane of slab
+        BufferBuilder buf = IRenderer.startLines(color, 0.75f);
+        emitHorizontalRect(buf, stack, x0, x1, z0, z1, slabMinY, lw);
+        // Draw top plane of slab only if different from bottom
+        if (slabMaxY != slabMinY) {
+            emitHorizontalRect(buf, stack, x0, x1, z0, z1, slabMaxY, lw);
+            // Connect corners with vertical edges
+            double vpX = IRenderer.renderManager.renderPosX();
+            double vpY = IRenderer.renderManager.renderPosY();
+            double vpZ = IRenderer.renderManager.renderPosZ();
+            IRenderer.emitLine(buf, stack, x0 - vpX, slabMinY - vpY, z0 - vpZ, x0 - vpX, slabMaxY - vpY, z0 - vpZ, lw);
+            IRenderer.emitLine(buf, stack, x1 - vpX, slabMinY - vpY, z0 - vpZ, x1 - vpX, slabMaxY - vpY, z0 - vpZ, lw);
+            IRenderer.emitLine(buf, stack, x1 - vpX, slabMinY - vpY, z1 - vpZ, x1 - vpX, slabMaxY - vpY, z1 - vpZ, lw);
+            IRenderer.emitLine(buf, stack, x0 - vpX, slabMinY - vpY, z1 - vpZ, x0 - vpX, slabMaxY - vpY, z1 - vpZ, lw);
+        }
+        IRenderer.endLines(buf, Baritone.settings().renderSchematicIgnoreDepth.value);
+    }
+
+    /** Emits four lines forming a horizontal rectangle at the given Y world-coordinate. */
+    private static void emitHorizontalRect(BufferBuilder buf, PoseStack stack,
+                                            double x0, double x1, double z0, double z1,
+                                            double worldY, float lineWidth) {
+        double vpX = IRenderer.renderManager.renderPosX();
+        double vpY = IRenderer.renderManager.renderPosY();
+        double vpZ = IRenderer.renderManager.renderPosZ();
+        double y = worldY - vpY;
+        IRenderer.emitLine(buf, stack, x0 - vpX, y, z0 - vpZ, x1 - vpX, y, z0 - vpZ, lineWidth);
+        IRenderer.emitLine(buf, stack, x1 - vpX, y, z0 - vpZ, x1 - vpX, y, z1 - vpZ, lineWidth);
+        IRenderer.emitLine(buf, stack, x1 - vpX, y, z1 - vpZ, x0 - vpX, y, z1 - vpZ, lineWidth);
+        IRenderer.emitLine(buf, stack, x0 - vpX, y, z1 - vpZ, x0 - vpX, y, z0 - vpZ, lineWidth);
     }
 
     // -------------------------------------------------------------------------

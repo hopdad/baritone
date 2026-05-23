@@ -187,6 +187,52 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
     }
 
     @Override
+    public int getBlocksRemaining() {
+        return incorrectPositions == null ? -1 : incorrectPositions.size();
+    }
+
+    @Override
+    public int getBlocksPlaced() {
+        return observedCompleted == null ? -1 : (int) observedCompleted.size();
+    }
+
+    @Override
+    public Map<Block, Integer> getMaterialList() {
+        if (schematic == null || origin == null || incorrectPositions == null || incorrectPositions.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        BlockState airState = Blocks.AIR.defaultBlockState();
+        Map<Block, Integer> counts = new HashMap<>();
+        // Snapshot to avoid CME if the main thread modifies incorrectPositions concurrently
+        for (BetterBlockPos pos : new ArrayList<>(incorrectPositions)) {
+            int sx = pos.x - origin.getX();
+            int sy = pos.y - origin.getY();
+            int sz = pos.z - origin.getZ();
+            if (sx < 0 || sy < 0 || sz < 0
+                    || sx >= schematic.widthX()
+                    || sy >= schematic.heightY()
+                    || sz >= schematic.lengthZ()) {
+                continue;
+            }
+            // Use AIR as the stand-in current state — we only care about the block type
+            // the schematic intends, not substitution-aware resolution.
+            BlockState desired = schematic.desiredState(sx, sy, sz, airState, Collections.emptyList());
+            if (!(desired.getBlock() instanceof AirBlock)) {
+                counts.merge(desired.getBlock(), 1, Integer::sum);
+            }
+        }
+        // Return sorted by count descending
+        return counts.entrySet().stream()
+                .sorted(Map.Entry.<Block, Integer>comparingByValue().reversed())
+                .collect(java.util.stream.Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (a, b) -> a,
+                        java.util.LinkedHashMap::new
+                ));
+    }
+
+    @Override
     public boolean build(String name, File schematic, Vec3i origin) {
         Optional<ISchematicFormat> format = SchematicSystem.INSTANCE.getByFile(schematic);
         if (!format.isPresent()) {
