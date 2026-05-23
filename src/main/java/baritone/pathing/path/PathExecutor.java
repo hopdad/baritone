@@ -294,6 +294,11 @@ public class PathExecutor implements IPathExecutor, Helper {
     }
 
     private boolean dangerousMobNearby() {
+        // If avoidance coefficient is neutral (≤ 1.0) no Avoidance spheres are created during
+        // path planning, so a reroute would produce an identical path — skip the entity scan.
+        if (Baritone.settings().mobAvoidanceCoefficient.value <= 1.0D) {
+            return false;
+        }
         double trigger = Baritone.settings().avoidanceRerouteDistance.value;
         double triggerSq = trigger * trigger;
         Vec3 self = ctx.player().position();

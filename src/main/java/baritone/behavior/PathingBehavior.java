@@ -106,11 +106,15 @@ public final class PathingBehavior extends Behavior implements IPathingBehavior,
 
         expectedSegmentStart = pathStart();
         baritone.getPathingControlManager().preTick();
-        tickPath();
-        ticksElapsedSoFar++;
+        // Decrement BEFORE tickPath so the cooldown reflects exactly N ticks of
+        // separation from the last reroute.  If we decremented after, tryConsumeThreatReroute
+        // would see the freshly-set value and the same tick's decrement would drop it to N-1,
+        // making the effective gap N-1 ticks and allowing an immediate re-fire when N==1.
         if (threatRerouteCooldown > 0) {
             threatRerouteCooldown--;
         }
+        tickPath();
+        ticksElapsedSoFar++;
         dispatchEvents();
     }
 
@@ -341,6 +345,16 @@ public final class PathingBehavior extends Behavior implements IPathingBehavior,
         }
         threatRerouteCooldown = Baritone.settings().avoidanceRerouteCooldownTicks.value;
         next = null;
+        // Cancel any in-progress look-ahead calculation. Without this, tickPath would
+        // idle for up to planAheadPrimaryTimeoutMS (default 4 s) waiting for the stale
+        // calc to finish before it could start a fresh, threat-aware path.
+        // PathCalculationResult.Type.CANCELLATION suppresses the CALC_FAILED event, so
+        // cancelling here does not disrupt normal path-event bookkeeping.
+        synchronized (pathCalcLock) {
+            if (inProgress != null) {
+                inProgress.cancel();
+            }
+        }
         return true;
     }
 

@@ -73,8 +73,8 @@ public final class MobDangerProfile {
             return null;
         }
         // Conditionally-hostile mobs: skip while they are still neutral.
-        if (entity instanceof Spider && ctx.player().getLightLevelDependentMagicValue() >= 0.5) {
-            return null; // spiders don't attack in sufficient light
+        if (entity instanceof Spider && entity.getLightLevelDependentMagicValue() >= 0.5) {
+            return null; // spiders don't attack in sufficient light at *the spider's* position
         }
         if (entity instanceof ZombifiedPiglin && ((ZombifiedPiglin) entity).getLastHurtByMob() == null) {
             return null; // piglins are neutral until provoked
@@ -86,10 +86,12 @@ public final class MobDangerProfile {
         final double baseCoeff = Baritone.settings().mobAvoidanceCoefficient.value;
         final int baseRadius = Baritone.settings().mobAvoidanceRadius.value;
         if (baseCoeff <= 1.0D) {
-            // A coefficient at or below 1.0 means the user has either disabled
-            // avoidance or is intentionally seeking mobs out; in that case
-            // per-type danger scaling is meaningless, so preserve flat behavior.
-            return new MobDangerProfile(baseCoeff, baseRadius);
+            // A coefficient at or below 1.0 means avoidance is disabled or the user
+            // is intentionally seeking mobs out.  Returning null means no Avoidance
+            // sphere is added at all, which is the correct neutral / seek-mob behavior.
+            // Returning a non-null profile with coefficient < 1.0 would produce
+            // attraction spheres that steer the pathfinder *toward* mobs.
+            return null;
         }
         final double extra = baseCoeff - 1.0D; // avoidance configured above the neutral 1.0
 

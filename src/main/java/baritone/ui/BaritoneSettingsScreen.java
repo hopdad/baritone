@@ -98,6 +98,13 @@ public class BaritoneSettingsScreen extends Screen {
     /** One RowGroup per setting currently visible in the scrollable area. */
     private final List<RowGroup> rowGroups = new ArrayList<>();
 
+    /**
+     * True once the initial snapshot has been taken. Minecraft calls {@link #init()} again
+     * on every window resize; without this flag, resizing after changing settings would
+     * overwrite the revert baseline with the already-modified values.
+     */
+    private boolean snapshotTaken = false;
+
     // ── Construction ──────────────────────────────────────────────────────────
 
     public BaritoneSettingsScreen() {
@@ -113,7 +120,13 @@ public class BaritoneSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        takeSnapshot();
+        // Only take the snapshot once — the first time the screen opens.
+        // Subsequent init() calls (e.g. on window resize) must not overwrite the
+        // baseline, or "Revert Changes" would restore post-modification values.
+        if (!snapshotTaken) {
+            takeSnapshot();
+            snapshotTaken = true;
+        }
         buildPersistentWidgets();
         rebuildRows();
         syncCategoryHighlights();
@@ -471,11 +484,14 @@ public class BaritoneSettingsScreen extends Screen {
                             BaritoneAPI.getSettings(),
                             setting.getName(),
                             valueEdit.getValue());
+                    // Only clear the dirty flag on success so that invalid input is not
+                    // silently discarded.  If parsing fails, editDirty stays true: the
+                    // EditBox retains the bad text and the user gets another chance to
+                    // correct it before closing the screen.
+                    editDirty = false;
                 } catch (Exception ignored) {
-                    // Leave the setting unchanged; the EditBox retains the invalid text
-                    // so the user knows their input was rejected.
+                    // Leave the setting unchanged; the EditBox retains the invalid text.
                 }
-                editDirty = false;
             }
         }
 
