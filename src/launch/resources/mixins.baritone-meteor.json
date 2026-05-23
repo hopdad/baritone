@@ -22,6 +22,7 @@
     "MixinLootTable",
     "MixinMinecraft",
     "MixinNetworkManager",
+    "MixinPauseScreen",
     "MixinPalettedContainer",
     "MixinPalettedContainer$Data",
     "MixinPlayerController",
