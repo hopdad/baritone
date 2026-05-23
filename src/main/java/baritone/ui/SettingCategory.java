@@ -55,10 +55,20 @@ public enum SettingCategory {
     MOB_AVOIDANCE("Mob Avoidance",
             "avoidance",
             "mobAvoidanceCoefficient", "mobAvoidanceRadius",
+            "nighttimeMobAvoidanceMultiplier",
             "avoidanceReroute", "avoidanceRerouteDistance", "avoidanceRerouteCooldownTicks",
             "mobSpawnerAvoidanceCoefficient", "mobSpawnerAvoidanceRadius",
             "spawnableBlockAvoidance", "spawnableBlockAvoidanceCoefficient",
-            "fleeWhenAttacked", "fleeDistance", "fleeStableHealthTicks", "fleePreserveY"
+            "dangerousBiomeAvoidance", "dangerousBiomeCoefficient", "dangerousBiomes",
+            "fleeWhenAttacked", "fleeDistance", "fleeStableHealthTicks",
+            "fleePreserveY", "fleeDangerFraction"
+    ),
+
+    SURVIVAL("Survival",
+            "autoPlaceTorches", "torchPlacementLightThreshold",
+            "fleeWhenAttacked", "fleeDistance", "fleeStableHealthTicks",
+            "fleePreserveY", "fleeDangerFraction",
+            "showStatusHud"
     ),
 
     MINING("Mining",

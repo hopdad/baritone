@@ -504,7 +504,8 @@ public final class Settings {
     public final Setting<Integer> avoidanceRerouteCooldownTicks = new Setting<>(40);
 
     /**
-     * Penalises A* nodes that sit on blocks where hostile mobs can spawn: solid floor with block-light ≤ 7.
+     * Penalises A* nodes that sit on potential mob-spawn surfaces: solid floor with block-light ≤ 1.
+     * (In Minecraft 1.18+ hostile mobs spawn only at block-light 0; threshold 1 adds a safety margin.)
      * Routing into a dark room therefore costs more than routing around it, reducing the chance of walking into an
      * ambush. Evaluated lazily per-node during A* so there is no main-thread overhead.
      * <p>
@@ -551,6 +552,70 @@ public final class Settings {
      * {@link baritone.api.pathing.goals.GoalRunAway}.
      */
     public final Setting<Boolean> fleePreserveY = new Setting<>(false);
+
+    /**
+     * Flee is only triggered when the player's health is at or below this fraction of their
+     * maximum health <em>and</em> a health drop is detected. For example {@code 0.5} means
+     * "only flee if already at or below half health when a hit lands". At {@code 1.0} any damage
+     * triggers flee regardless of current health (original behaviour).
+     * <p>
+     * Helps avoid unnecessary fleeing when a well-geared player takes minor incidental damage.
+     */
+    public final Setting<Double> fleeDangerFraction = new Setting<>(0.75);
+
+    /**
+     * At game-night, Baritone multiplies the "avoidance extra" (the part of
+     * {@link #mobAvoidanceCoefficient} above {@code 1.0}) for each mob by this value, producing
+     * wider / more expensive avoidance spheres. Set to {@code 1.0} to disable the night-time
+     * boost. Has no effect when {@link #avoidance} or mob avoidance is disabled.
+     */
+    public final Setting<Double> nighttimeMobAvoidanceMultiplier = new Setting<>(1.5);
+
+    /**
+     * When enabled, A* nodes whose biome matches any entry in {@link #dangerousBiomes} receive a
+     * cost multiplier of {@link #dangerousBiomeCoefficient}. This steers paths away from those
+     * biomes when an alternative exists.
+     * <p>
+     * Requires {@link #avoidance} to be enabled; evaluated lazily per-node so there is no
+     * main-thread overhead.
+     */
+    public final Setting<Boolean> dangerousBiomeAvoidance = new Setting<>(false);
+
+    /**
+     * Cost multiplier applied to A* nodes inside biomes listed in {@link #dangerousBiomes} when
+     * {@link #dangerousBiomeAvoidance} is enabled. Values above {@code 1.0} make those biomes
+     * more expensive to path through.
+     */
+    public final Setting<Double> dangerousBiomeCoefficient = new Setting<>(2.0);
+
+    /**
+     * Comma-separated list of biome resource IDs treated as dangerous when
+     * {@link #dangerousBiomeAvoidance} is enabled.
+     * Example: {@code "minecraft:deep_dark,minecraft:basalt_deltas"}.
+     */
+    public final Setting<String> dangerousBiomes = new Setting<>("minecraft:deep_dark");
+
+    /**
+     * When enabled, Baritone places a torch from the player's inventory whenever the block-light
+     * at the player's feet drops to {@link #torchPlacementLightThreshold} or below. Checked
+     * approximately once per second while the player is on the ground. Silently skips if no
+     * torch is available in the inventory.
+     */
+    public final Setting<Boolean> autoPlaceTorches = new Setting<>(false);
+
+    /**
+     * Block-light level at or below which a torch is placed when {@link #autoPlaceTorches} is
+     * enabled. Default {@code 1}: in Minecraft 1.18+ hostile mobs spawn only at block-light 0,
+     * so keeping the threshold at 1 maintains a one-level safety margin.
+     */
+    public final Setting<Integer> torchPlacementLightThreshold = new Setting<>(1);
+
+    /**
+     * Show a compact status line in the Minecraft action bar (the translucent text above the
+     * hotbar) showing the active Baritone process and goal. Updated approximately once per
+     * second. Disable if it conflicts with server or other-mod action-bar messages.
+     */
+    public final Setting<Boolean> showStatusHud = new Setting<>(true);
 
     /**
      * When running a goto towards a container block (chest, ender chest, furnace, etc),

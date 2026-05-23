@@ -114,9 +114,10 @@ public final class CombatFleeProcess extends BaritoneProcessHelper {
         boolean tookDamage = (health < prevHealth);
         prevHealth = health;
 
-        if (tookDamage) {
+        if (tookDamage && isDangerous(health)) {
             if (!fleeing) {
-                logDirect("CombatFlee: took damage, starting flee");
+                logDirect("CombatFlee: took damage at "
+                        + String.format("%.1f", health) + " HP, starting flee");
             }
             fleeing = true;
             stableHealthTicks = 0; // reset stability counter on any hit
@@ -214,6 +215,17 @@ public final class CombatFleeProcess extends BaritoneProcessHelper {
         });
 
         return Optional.ofNullable(nearest[0]);
+    }
+
+    /**
+     * Returns {@code true} when the player's current health is low enough that a hit is worth
+     * fleeing from. At {@link baritone.api.Settings#fleeDangerFraction} == 1.0 every hit
+     * triggers flee; at lower values the player must already be wounded before fleeing activates.
+     */
+    private boolean isDangerous(float currentHealth) {
+        float maxHealth = ctx.player().getMaxHealth();
+        double fraction = Baritone.settings().fleeDangerFraction.value;
+        return (currentHealth / maxHealth) <= fraction;
     }
 
     /** Clears all internal state (called on disable or loss of control). */

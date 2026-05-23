@@ -66,10 +66,20 @@ public class Avoidance {
                     .forEach(mobspawner -> res.add(new Avoidance(mobspawner, mobSpawnerCoeff, Baritone.settings().mobSpawnerAvoidanceRadius.value)));
         }
         if (mobCoeff != 1.0D) {
+            // Night-time boost: scale the "extra" avoidance (part above 1.0) by the multiplier.
+            // Checked against isDay() so the multiplier is irrelevant in dimensions without a sky cycle.
+            double nightMult = Baritone.settings().nighttimeMobAvoidanceMultiplier.value;
+            boolean applyNightBoost = nightMult != 1.0D && !ctx.world().isDay();
+
             ctx.entitiesStream().forEach(entity -> {
                 MobDangerProfile profile = MobDangerProfile.of(entity, ctx);
                 if (profile != null) {
-                    res.add(new Avoidance(entity.blockPosition(), profile.coefficient, profile.radius));
+                    double coeff = profile.coefficient;
+                    if (applyNightBoost) {
+                        // Scale only the extra above 1.0; a neutral coefficient stays neutral.
+                        coeff = 1.0D + (coeff - 1.0D) * nightMult;
+                    }
+                    res.add(new Avoidance(entity.blockPosition(), coeff, profile.radius));
                 }
             });
         }

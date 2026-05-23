@@ -72,6 +72,13 @@ public final class Favoring {
     private final SpawnableBlockPenalty spawnPenalty;
 
     /**
+     * Per-node biome danger penalty, or {@code null} when
+     * {@link baritone.api.Settings#dangerousBiomeAvoidance} is disabled or the biome list is empty.
+     * Penalises nodes inside user-configured dangerous biomes.
+     */
+    private final BiomeDangerPenalty biomePenalty;
+
+    /**
      * Full constructor: applies both backtrack favoring from a previous path and mob/spawner
      * avoidance spheres derived from the current world state.
      *
@@ -112,8 +119,18 @@ public final class Favoring {
         } else {
             this.spawnPenalty = null;
         }
+        // Create the biome danger penalty evaluator if the feature is enabled.
+        if (Baritone.settings().avoidance.value
+                && Baritone.settings().dangerousBiomeAvoidance.value
+                && Baritone.settings().dangerousBiomeCoefficient.value > 1.0D) {
+            BiomeDangerPenalty bp = new BiomeDangerPenalty(context.world);
+            this.biomePenalty = bp.isEmpty() ? null : bp;
+        } else {
+            this.biomePenalty = null;
+        }
         Helper.HELPER.logDebug("Favoring size: " + favorings.size() + ", avoidances: " + this.avoidances.length
-                + ", spawnPenalty: " + (this.spawnPenalty != null));
+                + ", spawnPenalty: " + (this.spawnPenalty != null)
+                + ", biomePenalty: " + (this.biomePenalty != null));
     }
 
     /**
@@ -122,7 +139,7 @@ public final class Favoring {
      * can be skipped entirely by the caller.
      */
     public boolean isEmpty() {
-        return favorings.isEmpty() && avoidances.length == 0 && spawnPenalty == null;
+        return favorings.isEmpty() && avoidances.length == 0 && spawnPenalty == null && biomePenalty == null;
     }
 
     /**
@@ -153,6 +170,9 @@ public final class Favoring {
         }
         if (spawnPenalty != null) {
             result *= spawnPenalty.penalty(x, y, z);
+        }
+        if (biomePenalty != null) {
+            result *= biomePenalty.penalty(x, y, z);
         }
         return result;
     }

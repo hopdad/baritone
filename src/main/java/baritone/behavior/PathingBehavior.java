@@ -36,6 +36,7 @@ import baritone.pathing.path.PathExecutor;
 import baritone.utils.PathRenderer;
 import baritone.utils.PathingCommandContext;
 import baritone.utils.pathing.Favoring;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -116,6 +117,52 @@ public final class PathingBehavior extends Behavior implements IPathingBehavior,
         tickPath();
         ticksElapsedSoFar++;
         dispatchEvents();
+
+        // Action-bar HUD: update once per second (every 20 ticks).
+        if (Baritone.settings().showStatusHud.value && ticksElapsedSoFar % 20 == 0) {
+            updateStatusHud();
+        }
+    }
+
+    /**
+     * Pushes a compact status line to the Minecraft action bar (above the hotbar).
+     * The text is rebuilt every call so it always reflects the current process / goal.
+     */
+    private void updateStatusHud() {
+        String status = buildHudStatus();
+        try {
+            Minecraft.getInstance().gui.setOverlayMessage(
+                    Component.literal("§b[Baritone]§r " + status), false);
+        } catch (Exception ignored) {
+            // Guard against API changes in newer MC versions — HUD is optional.
+        }
+    }
+
+    private String buildHudStatus() {
+        // Process name
+        String processName = baritone.getPathingControlManager()
+                .mostRecentInControl()
+                .map(p -> p.displayName())
+                .orElse("idle");
+
+        // Goal
+        String goalStr = "none";
+        if (goal != null) {
+            String g = goal.toString();
+            goalStr = g.length() > 40 ? g.substring(0, 38) + "…" : g;
+        }
+
+        // State indicator
+        String state;
+        if (current != null && !current.finished()) {
+            state = "pathing";
+        } else if (inProgress != null) {
+            state = "calculating";
+        } else {
+            state = "stopped";
+        }
+
+        return processName + " | " + state + " | goal: " + goalStr;
     }
 
     @Override

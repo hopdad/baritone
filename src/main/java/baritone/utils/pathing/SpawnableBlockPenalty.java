@@ -53,8 +53,12 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public final class SpawnableBlockPenalty {
 
-    /** Mob-spawn block-light threshold (vanilla: light ≤ this value allows spawning). */
-    private static final int SPAWN_LIGHT_THRESHOLD = 7;
+    /**
+     * Mob-spawn block-light threshold. In Minecraft 1.18+ hostile mobs spawn only at block-light 0;
+     * we use 1 as the threshold to maintain a one-level safety margin (positions with block-light 0
+     * or 1 are penalised). This matches {@link baritone.api.Settings#torchPlacementLightThreshold}.
+     */
+    private static final int SPAWN_LIGHT_THRESHOLD = 1;
 
     private final Level world;
     private final BlockStateInterface bsi;
