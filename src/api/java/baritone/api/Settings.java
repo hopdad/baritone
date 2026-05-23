@@ -887,6 +887,72 @@ public final class Settings {
      */
     public final Setting<Boolean> fadePath = new Setting<>(false);
 
+    // ---- Schematic ghost overlay ----
+
+    /**
+     * Show a wireframe ghost overlay for the active schematic so you can see what still needs
+     * to be built.  Three colours are used:
+     * <ul>
+     *   <li>{@link #colorSchematicGhostBlocksToPlace} — positions the schematic wants a block
+     *       but the world currently has air (the main "ghost block" display)</li>
+     *   <li>{@link #colorSchematicGhostBlocksToBreak} — positions the schematic wants air but
+     *       the world has a block</li>
+     *   <li>{@link #colorSchematicGhostBlocksWrong}  — positions that have a block, but it is
+     *       the wrong type or state</li>
+     * </ul>
+     * The schematic bounding box is separately controlled by {@link #renderSchematicBoundingBox}.
+     */
+    public final Setting<Boolean> renderSchematic = new Setting<>(false);
+
+    /**
+     * How many blocks around the player (Manhattan-like box radius) to scan for the schematic
+     * ghost overlay.  Increasing this value shows more of the schematic but costs more per frame.
+     * Values above 32 are not recommended for large schematics.
+     */
+    public final Setting<Integer> renderSchematicOverlayRadius = new Setting<>(24);
+
+    /**
+     * Cap on the number of overlay wireframe boxes drawn per frame by the schematic ghost renderer.
+     * Prevents frame-rate drops on very large incorrect regions.
+     */
+    public final Setting<Integer> renderSchematicOverlayMaxBlocks = new Setting<>(2000);
+
+    /**
+     * Draw a wireframe box around the entire schematic bounds while {@link #renderSchematic} is
+     * active.  Disable to reduce clutter on very large builds.
+     */
+    public final Setting<Boolean> renderSchematicBoundingBox = new Setting<>(true);
+
+    /**
+     * Render the schematic ghost overlay through walls (no depth testing).
+     */
+    public final Setting<Boolean> renderSchematicIgnoreDepth = new Setting<>(false);
+
+    /**
+     * Wireframe colour for schematic positions that need a block placed (world has air,
+     * schematic wants a solid block).
+     */
+    public final Setting<Color> colorSchematicGhostBlocksToPlace = new Setting<>(new Color(0, 225, 195));
+
+    /**
+     * Wireframe colour for schematic positions that need a block removed (schematic wants air,
+     * world has a block).
+     */
+    public final Setting<Color> colorSchematicGhostBlocksToBreak = new Setting<>(new Color(255, 60, 60));
+
+    /**
+     * Wireframe colour for schematic positions where the world has a block but it is the wrong
+     * type or block-state (neither the current nor the desired state is air).
+     */
+    public final Setting<Color> colorSchematicGhostBlocksWrong = new Setting<>(new Color(255, 165, 0));
+
+    /**
+     * Wireframe colour of the schematic bounding box drawn by {@link #renderSchematicBoundingBox}.
+     */
+    public final Setting<Color> colorSchematicBoundingBox = new Setting<>(new Color(255, 230, 0));
+
+    // ---- end schematic ghost overlay ----
+
     /**
      * Move without having to force the client-sided rotations
      */

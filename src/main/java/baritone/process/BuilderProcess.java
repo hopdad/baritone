@@ -172,6 +172,21 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
     }
 
     @Override
+    public ISchematic getActiveSchematic() {
+        return schematic;
+    }
+
+    @Override
+    public Vec3i getActiveSchematicOrigin() {
+        return origin;
+    }
+
+    @Override
+    public String getActiveSchematicName() {
+        return name;
+    }
+
+    @Override
     public boolean build(String name, File schematic, Vec3i origin) {
         Optional<ISchematicFormat> format = SchematicSystem.INSTANCE.getByFile(schematic);
         if (!format.isPresent()) {

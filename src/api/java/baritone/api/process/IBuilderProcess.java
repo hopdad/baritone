@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
+import javax.annotation.Nullable;
 
 /**
  * @author Brady
@@ -75,6 +76,32 @@ public interface IBuilderProcess extends IBaritoneProcess {
      * cause it to give up. This is updated every tick, but only while the builder process is active.
      */
     List<BlockState> getApproxPlaceable();
+
+    /**
+     * Returns the fully-transformed schematic currently loaded into the builder (after rotation,
+     * mirroring, substitution, and skip-block masking have been applied), or {@code null} if no
+     * schematic is loaded.
+     *
+     * <p>Safe to call from any thread; the schematic is immutable after {@link #build} returns.</p>
+     */
+    @Nullable
+    ISchematic getActiveSchematic();
+
+    /**
+     * Returns the world-space origin of the active schematic (the block position that corresponds
+     * to schematic-relative {@code (0, 0, 0)}), or {@code null} if no schematic is loaded.
+     *
+     * <p>This already incorporates any {@code schematicOrientationX/Y/Z} adjustments.</p>
+     */
+    @Nullable
+    Vec3i getActiveSchematicOrigin();
+
+    /**
+     * Returns the human-readable name of the currently loaded schematic (typically the file name),
+     * or {@code null} if no schematic is loaded.
+     */
+    @Nullable
+    String getActiveSchematicName();
     /**
      * Returns the lower bound of the current mining layer if mineInLayers is true.
      * If mineInLayers is false, this will return an empty optional.

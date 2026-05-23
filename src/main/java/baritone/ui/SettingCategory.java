@@ -84,6 +84,22 @@ public enum SettingCategory {
             "pathRenderLineWidthPixels", "goalRenderLineWidthPixels"
     ),
 
+    BUILDING("Building",
+            // Ghost overlay
+            "renderSchematic", "renderSchematicBoundingBox",
+            "renderSchematicOverlayRadius", "renderSchematicOverlayMaxBlocks",
+            "renderSchematicIgnoreDepth",
+            "colorSchematicGhostBlocksToPlace", "colorSchematicGhostBlocksToBreak",
+            "colorSchematicGhostBlocksWrong", "colorSchematicBoundingBox",
+            // Layer control
+            "buildInLayers", "layerOrder", "layerHeight", "startAtLayer",
+            // Block matching
+            "buildIgnoreDirection", "buildIgnoreExisting",
+            "buildSubstitutes", "buildValidSubstitutes", "buildSkipBlocks",
+            // Other
+            "buildOnlySelection", "mapArtMode", "notificationOnBuildFinished"
+    ),
+
     ALL("All" /* no names list — returns every non-Java-only setting */);
 
     /** Human-readable label shown on the tab button. */
