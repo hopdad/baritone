@@ -32,6 +32,7 @@ import baritone.pathing.movement.Movement;
 import baritone.pathing.movement.MovementHelper;
 import baritone.pathing.movement.movements.*;
 import baritone.utils.BlockStateInterface;
+import baritone.utils.pathing.MobDangerProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.Tuple;
@@ -97,6 +98,11 @@ public class PathExecutor implements IPathExecutor, Helper {
             return true; // stop bugging me, I'm done
         }
         Movement movement = (Movement) path.movements().get(pathPosition);
+        if (shouldRerouteForThreat(movement)) {
+            logDebug("Dangerous mob approached; rerouting to path around it");
+            cancel();
+            return false;
+        }
         BetterBlockPos whereAmI = ctx.playerFeet();
         if (!movement.getValidPositions().contains(whereAmI)) {
             for (int i = 0; i < pathPosition && i < path.length(); i++) {//this happens for example when you lag out and get teleported back a couple blocks
@@ -265,6 +271,38 @@ public class PathExecutor implements IPathExecutor, Helper {
             }
         }
         return new Tuple<>(best, bestPos);
+    }
+
+    /**
+     * Whether the current path should be abandoned because a dangerous mob has moved into close range since the path
+     * was calculated. Cancelling here makes {@link PathingBehavior} replan from the current position, and that replan
+     * reads live mob positions, so the new path routes around the threat. Throttled via
+     * {@link PathingBehavior#tryConsumeThreatReroute()} to avoid recomputing every tick while a mob lingers nearby.
+     */
+    private boolean shouldRerouteForThreat(Movement movement) {
+        if (!Baritone.settings().avoidance.value || !Baritone.settings().avoidanceReroute.value) {
+            return false;
+        }
+        if (!movement.safeToCancel()) {
+            // bailing mid-jump or mid-fall would be more dangerous than the mob
+            return false;
+        }
+        if (!dangerousMobNearby()) {
+            return false;
+        }
+        return behavior.tryConsumeThreatReroute();
+    }
+
+    private boolean dangerousMobNearby() {
+        double trigger = Baritone.settings().avoidanceRerouteDistance.value;
+        double triggerSq = trigger * trigger;
+        Vec3 self = ctx.player().position();
+        return ctx.entitiesStream().anyMatch(entity -> {
+            MobDangerProfile profile = MobDangerProfile.of(entity, ctx);
+            // coefficient <= 1.0 means we wouldn't actually route around it, so a reroute would be pointless
+            return profile != null && profile.coefficient > 1.0D
+                    && entity.position().distanceToSqr(self) <= triggerSq;
+        });
     }
 
     private boolean shouldPause() {

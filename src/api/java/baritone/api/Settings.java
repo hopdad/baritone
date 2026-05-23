@@ -485,6 +485,25 @@ public final class Settings {
     public final Setting<Integer> mobAvoidanceRadius = new Setting<>(8);
 
     /**
+     * When {@link #avoidance} is enabled, re-path away from a dangerous mob that approaches during execution.
+     * <p>
+     * The path is planned around the mobs present when it was calculated, but mobs move; this reacts to a threat
+     * that wanders (or chases the player) into close range after the path was already computed.
+     */
+    public final Setting<Boolean> avoidanceReroute = new Setting<>(true);
+
+    /**
+     * A dangerous mob within this many blocks of the player triggers a reroute (see {@link #avoidanceReroute}).
+     */
+    public final Setting<Integer> avoidanceRerouteDistance = new Setting<>(6);
+
+    /**
+     * Minimum number of ticks between threat-triggered reroutes, so a persistently nearby mob doesn't cause the
+     * path to be cancelled and recomputed every single tick.
+     */
+    public final Setting<Integer> avoidanceRerouteCooldownTicks = new Setting<>(40);
+
+    /**
      * When running a goto towards a container block (chest, ender chest, furnace, etc),
      * right click and open it once you arrive.
      */

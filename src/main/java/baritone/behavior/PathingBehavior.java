@@ -72,6 +72,8 @@ public final class PathingBehavior extends Behavior implements IPathingBehavior,
 
     private boolean lastAutoJump;
 
+    private int threatRerouteCooldown;
+
     private BetterBlockPos expectedSegmentStart;
 
     private final LinkedBlockingQueue<PathEvent> toDispatch = new LinkedBlockingQueue<>();
@@ -106,6 +108,9 @@ public final class PathingBehavior extends Behavior implements IPathingBehavior,
         baritone.getPathingControlManager().preTick();
         tickPath();
         ticksElapsedSoFar++;
+        if (threatRerouteCooldown > 0) {
+            threatRerouteCooldown--;
+        }
         dispatchEvents();
     }
 
@@ -321,6 +326,22 @@ public final class PathingBehavior extends Behavior implements IPathingBehavior,
 
     public void requestPause() {
         pauseRequestedLastTick = true;
+    }
+
+    /**
+     * Throttles threat-triggered reroutes (see {@link PathExecutor}) so a persistently nearby mob doesn't cause the
+     * path to be cancelled and recomputed every tick. When a reroute is permitted, the planned-ahead {@code next}
+     * segment is discarded as well, since it predates the threat and would otherwise be continued onto blindly.
+     *
+     * @return true if a reroute is permitted right now (and starts the cooldown)
+     */
+    public boolean tryConsumeThreatReroute() {
+        if (threatRerouteCooldown > 0) {
+            return false;
+        }
+        threatRerouteCooldown = Baritone.settings().avoidanceRerouteCooldownTicks.value;
+        next = null;
+        return true;
     }
 
     public boolean cancelSegmentIfSafe() {
