@@ -54,7 +54,7 @@ import static baritone.api.pathing.movement.ActionCosts.COST_INF;
 public final class MineProcess extends BaritoneProcessHelper implements IMineProcess {
 
     private BlockOptionalMetaLookup filter;
-    private List<BlockPos> knownOreLocations;
+    private volatile List<BlockPos> knownOreLocations;
     private List<BlockPos> blacklist; // inaccessible
     private Map<BlockPos, Long> anticipatedDrops;
     private BlockPos branchPoint;
@@ -234,7 +234,29 @@ public final class MineProcess extends BaritoneProcessHelper implements IMinePro
         List<BlockPos> dropped = droppedItemsScan();
         List<BlockPos> locs = searchWorld(context, filter, Baritone.settings().mineMaxOreLocationsCount.value, already, blacklist, dropped);
         locs.addAll(dropped);
-        if (locs.isEmpty() && !Baritone.settings().exploreForBlocks.value) {
+
+        // Merge scan results with whatever the main thread currently considers valid.
+        //
+        // The CalculationContext used here was snapshotted on the main thread before this
+        // rescan was dispatched, so its BSI may be several ticks stale.  If the player mined
+        // several neighbouring blocks while the scan was in-flight, the stale prune() inside
+        // searchWorld() can drop the last remaining ore block (it may not appear in the cached
+        // scan, and the stale BSI might see it as still surrounded — causing it to fail
+        // plausibleToBreak or allowOnlyExposedOres checks).  Overwriting knownOreLocations
+        // with that result silently discards the block the main thread already knows about.
+        //
+        // Solution: union the scan result with the current volatile list.  The main-thread
+        // updateGoal() call (which always creates a fresh CalculationContext) runs every tick
+        // and is the authoritative place to remove blocks that are confirmed air.
+        List<BlockPos> current = knownOreLocations; // volatile read — safe snapshot
+        List<BlockPos> merged = new ArrayList<>(locs);
+        for (BlockPos pos : current) {
+            if (!merged.contains(pos)) {
+                merged.add(pos);
+            }
+        }
+
+        if (merged.isEmpty() && !Baritone.settings().exploreForBlocks.value) {
             logDirect("No locations for " + filter + " known, cancelling");
             if (Baritone.settings().notificationOnMineFail.value) {
                 logNotification("No locations for " + filter + " known, cancelling", true);
@@ -242,7 +264,7 @@ public final class MineProcess extends BaritoneProcessHelper implements IMinePro
             cancel();
             return;
         }
-        knownOreLocations = locs;
+        knownOreLocations = merged;
     }
 
     private boolean internalMiningGoal(BlockPos pos, CalculationContext context, List<BlockPos> locs) {
