@@ -504,6 +504,55 @@ public final class Settings {
     public final Setting<Integer> avoidanceRerouteCooldownTicks = new Setting<>(40);
 
     /**
+     * Penalises A* nodes that sit on blocks where hostile mobs can spawn: solid floor with block-light ≤ 7.
+     * Routing into a dark room therefore costs more than routing around it, reducing the chance of walking into an
+     * ambush. Evaluated lazily per-node during A* so there is no main-thread overhead.
+     * <p>
+     * Requires {@link #avoidance} to be enabled; no effect when {@link #spawnableBlockAvoidanceCoefficient} is
+     * {@code 1.0}.
+     */
+    public final Setting<Boolean> spawnableBlockAvoidance = new Setting<>(false);
+
+    /**
+     * Cost multiplier applied to A* nodes that sit on potential mob-spawn surfaces when
+     * {@link #spawnableBlockAvoidance} is enabled.
+     * <p>
+     * Set to {@code 1.0} to disable the penalty. Values greater than {@code 1.0} steer the pathfinder away from
+     * dark blocks; lower values would attract it toward them (not recommended).
+     */
+    public final Setting<Double> spawnableBlockAvoidanceCoefficient = new Setting<>(1.5);
+
+    /**
+     * When enabled, Baritone interrupts its current goal and flees away from the nearest hostile mob whenever
+     * the player's health drops (indicating a hit was taken).
+     * <p>
+     * Baritone resumes its previous goal once health has been stable for {@link #fleeStableHealthTicks} consecutive
+     * ticks and no hostile mob is within {@link #fleeDistance} blocks. The flee direction is determined by
+     * {@link baritone.api.pathing.goals.GoalRunAway} targeting the nearest identified threat.
+     */
+    public final Setting<Boolean> fleeWhenAttacked = new Setting<>(false);
+
+    /**
+     * Radius in blocks that Baritone runs away to when {@link #fleeWhenAttacked} triggers.
+     * Passed as the {@code distance} argument to {@link baritone.api.pathing.goals.GoalRunAway}.
+     */
+    public final Setting<Integer> fleeDistance = new Setting<>(16);
+
+    /**
+     * Number of consecutive ticks with no health loss <em>and</em> no hostile mob within {@link #fleeDistance}
+     * blocks required before Baritone considers the threat cleared and resumes its previous goal.
+     */
+    public final Setting<Integer> fleeStableHealthTicks = new Setting<>(60);
+
+    /**
+     * When {@code true}, the flee goal attempts to keep the player at their current Y coordinate
+     * (horizontal-only escape). Useful in enclosed spaces such as mines or caves where vertical movement is
+     * undesirable. Passed as the {@code maintainY} argument to
+     * {@link baritone.api.pathing.goals.GoalRunAway}.
+     */
+    public final Setting<Boolean> fleePreserveY = new Setting<>(false);
+
+    /**
      * When running a goto towards a container block (chest, ender chest, furnace, etc),
      * right click and open it once you arrive.
      */

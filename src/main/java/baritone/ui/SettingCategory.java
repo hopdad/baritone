@@ -56,7 +56,9 @@ public enum SettingCategory {
             "avoidance",
             "mobAvoidanceCoefficient", "mobAvoidanceRadius",
             "avoidanceReroute", "avoidanceRerouteDistance", "avoidanceRerouteCooldownTicks",
-            "mobSpawnerAvoidanceCoefficient", "mobSpawnerAvoidanceRadius"
+            "mobSpawnerAvoidanceCoefficient", "mobSpawnerAvoidanceRadius",
+            "spawnableBlockAvoidance", "spawnableBlockAvoidanceCoefficient",
+            "fleeWhenAttacked", "fleeDistance", "fleeStableHealthTicks", "fleePreserveY"
     ),
 
     MINING("Mining",

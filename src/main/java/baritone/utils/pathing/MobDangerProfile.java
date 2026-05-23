@@ -61,6 +61,42 @@ public final class MobDangerProfile {
     }
 
     /**
+     * Returns {@code true} when {@code entity} is a hostile mob that is currently targeting or
+     * capable of targeting the player — independent of any avoidance coefficient settings.
+     *
+     * <p>This is the raw "is this thing dangerous right now?" check used by features such as
+     * {@link baritone.process.CombatFleeProcess} that need threat detection regardless of whether
+     * the main avoidance system is configured.
+     *
+     * @param entity the entity to evaluate
+     * @param ctx    the player context (used for light-level dependent checks)
+     * @return {@code true} if the entity is currently a hostile threat to the player
+     */
+    public static boolean isCurrentlyHostile(Entity entity, IPlayerContext ctx) {
+        if (!(entity instanceof Mob)) {
+            return false;
+        }
+        if (entity instanceof Spider && entity.getLightLevelDependentMagicValue() >= 0.5) {
+            return false;
+        }
+        if (entity instanceof ZombifiedPiglin && ((ZombifiedPiglin) entity).getLastHurtByMob() == null) {
+            return false;
+        }
+        if (entity instanceof EnderMan && !((EnderMan) entity).isCreepy()) {
+            return false;
+        }
+        // net.minecraft.world.entity.monster.Monster is the marker for most always-hostile mobs.
+        // Spider/ZombifiedPiglin/EnderMan passed their conditional checks above.
+        if (entity instanceof net.minecraft.world.entity.monster.Monster) {
+            return true;
+        }
+        // A few hostile mobs extend FlyingMob rather than Monster; add them explicitly.
+        // (Blaze extends Monster so it is already covered above.)
+        EntityType<?> type = entity.getType();
+        return type == EntityType.GHAST || type == EntityType.PHANTOM;
+    }
+
+    /**
      * Computes the avoidance profile for the given entity.
      *
      * @param entity the entity to evaluate

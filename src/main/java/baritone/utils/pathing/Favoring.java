@@ -17,6 +17,7 @@
 
 package baritone.utils.pathing;
 
+import baritone.Baritone;
 import baritone.api.pathing.calc.IPath;
 import baritone.api.utils.BetterBlockPos;
 import baritone.api.utils.Helper;
@@ -64,6 +65,13 @@ public final class Favoring {
     private final Avoidance[] avoidances;
 
     /**
+     * Per-node spawnable-block penalty, or {@code null} when
+     * {@link baritone.api.Settings#spawnableBlockAvoidance} is disabled.
+     * Penalises dark, solid-floored positions where hostile mobs can spawn.
+     */
+    private final SpawnableBlockPenalty spawnPenalty;
+
+    /**
      * Full constructor: applies both backtrack favoring from a previous path and mob/spawner
      * avoidance spheres derived from the current world state.
      *
@@ -95,7 +103,17 @@ public final class Favoring {
             previous.positions().forEach(pos -> favorings.put(BetterBlockPos.longHash(pos), coeff));
         }
         this.avoidances = avoidances.toArray(new Avoidance[0]);
-        Helper.HELPER.logDebug("Favoring size: " + favorings.size() + ", avoidances: " + this.avoidances.length);
+        // Create the spawnable-block penalty evaluator only when the feature is enabled and the
+        // coefficient actually penalises something — avoids allocating ThreadLocal state needlessly.
+        if (Baritone.settings().avoidance.value
+                && Baritone.settings().spawnableBlockAvoidance.value
+                && Baritone.settings().spawnableBlockAvoidanceCoefficient.value > 1.0D) {
+            this.spawnPenalty = new SpawnableBlockPenalty(context.world, context.bsi);
+        } else {
+            this.spawnPenalty = null;
+        }
+        Helper.HELPER.logDebug("Favoring size: " + favorings.size() + ", avoidances: " + this.avoidances.length
+                + ", spawnPenalty: " + (this.spawnPenalty != null));
     }
 
     /**
@@ -104,7 +122,7 @@ public final class Favoring {
      * can be skipped entirely by the caller.
      */
     public boolean isEmpty() {
-        return favorings.isEmpty() && avoidances.length == 0;
+        return favorings.isEmpty() && avoidances.length == 0 && spawnPenalty == null;
     }
 
     /**
@@ -132,6 +150,9 @@ public final class Favoring {
         double result = favorings.get(hash);
         for (Avoidance avoidance : avoidances) {
             result *= avoidance.coefficient(x, y, z);
+        }
+        if (spawnPenalty != null) {
+            result *= spawnPenalty.penalty(x, y, z);
         }
         return result;
     }
